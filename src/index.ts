@@ -25,21 +25,24 @@ app.post("/whitelist", async function (req, res) {
 
   const { indicator, signature, address } = req.body;
 
-  if (
-    typeof address != typeof "s2t" ||
-    !ethers.utils.isAddress(address) ||
-    (await joinedCollection.findOne({ _id: address.toUpperCase() }))
-  ) {
+  const isAtJoinedCollection = async (id: string) => {
+    return await joinedCollection.findOne({ _id: id });
+  };
+
+  const isAtIndicatorCollection = async (id: string) => {
+    return await indicatorsCollection.findOne({ _id: id });
+  };
+
+  const is0xAddress = (address: any) => {
+    return ethers.utils.isAddress(address) && address.startsWith("0X");
+  };
+
+  if (!is0xAddress(address) || (await isAtJoinedCollection(address))) {
     res.sendStatus(400);
     return;
   }
 
-  if (
-    typeof indicator != typeof "s2t" ||
-    !ethers.utils.isAddress(indicator) ||
-    indicator.toUpperCase() == address.toUpperCase() ||
-    !(await joinedCollection.findOne({ _id: indicator.toUpperCase() }))
-  ) {
+  if (!is0xAddress(indicator) || !(await isAtJoinedCollection(indicator))) {
     res.sendStatus(400);
     return;
   }
@@ -48,6 +51,7 @@ app.post("/whitelist", async function (req, res) {
     res.sendStatus(400);
     return;
   }
+
   try {
     const signerAddr = ethers.utils.verifyMessage(indicator, signature);
     if (signerAddr.toUpperCase() != address.toUpperCase()) {
@@ -63,20 +67,18 @@ app.post("/whitelist", async function (req, res) {
       _id: address.toUpperCase(),
       whoIndicated: indicator.toUpperCase(),
     });
-    if (
-      !(await indicatorsCollection.findOne({ _id: indicator.toUpperCase() }))
-    ) {
-      await indicatorsCollection.insertOne({
-        _id: indicator.toUpperCase(),
-        howManyIndicated: 1,
-      });
-      res.sendStatus(201);
-      return;
-    } else {
+    if (await isAtIndicatorCollection(indicator)) {
       await indicatorsCollection.findOneAndUpdate(
         { _id: indicator.toUpperCase() },
         { $inc: { howManyIndicated: 1 } }
       );
+      res.sendStatus(201);
+      return;
+    } else {
+      await indicatorsCollection.insertOne({
+        _id: indicator.toUpperCase(),
+        howManyIndicated: 1,
+      });
       res.sendStatus(201);
       return;
     }
