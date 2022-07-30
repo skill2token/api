@@ -37,7 +37,6 @@ npm start
 - There are some rules to follow when using this API:
   - None of those variables can be `null` or `undefined`.
   - Signature has to be a valid signature with precisely the `indicator` address as the message.
-  - The `indicator` and `address` variables have to be different.
   - All of the variables have to be `strings`.
   - `indicator` and `address` have to be valid `Ethereum` addresses.
   
