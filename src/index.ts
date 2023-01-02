@@ -20,12 +20,25 @@ const joinedCollection = database.collection("joined");
 
 app.use(cors());
 app.use(express.json());
+
 app.post("/whitelist", async function (req, res) {
   res.header("Access-Control-Allow-Origin", "*");
 
-  const { indicator, signature, address } = req.body;
+  let { indicator, signature, address } = req.body;
+
+  indicator = indicator.toUpperCase();
+  address = address.toUpperCase();
+
+  if (indicator == address) {
+    res.sendStatus(400);
+    console.log("Error #");
+    return;
+  }
 
   const isAtJoinedCollection = async (id: string) => {
+    if (id == "0X0000000000000000000000000000000000000000") {
+      return true;
+    }
     return await joinedCollection.findOne({ _id: id });
   };
 
@@ -34,49 +47,58 @@ app.post("/whitelist", async function (req, res) {
   };
 
   const is0xAddress = (address: any) => {
-    return ethers.utils.isAddress(address) && address.startsWith("0X");
+    const nAddr =
+      address.substring(0, 1) + "x" + address.substring(1 + "x".length);
+    return ethers.utils.isAddress(nAddr) && address.startsWith("0X");
   };
 
   if (!is0xAddress(address) || (await isAtJoinedCollection(address))) {
     res.sendStatus(400);
+    console.log("Error #1");
     return;
   }
 
   if (!is0xAddress(indicator) || !(await isAtJoinedCollection(indicator))) {
     res.sendStatus(400);
+    console.log("Error #2");
     return;
   }
 
   if (typeof signature != typeof "s2t") {
     res.sendStatus(400);
+    console.log("Error #3");
     return;
   }
 
   try {
-    const signerAddr = ethers.utils.verifyMessage(indicator, signature);
-    if (signerAddr.toUpperCase() != address.toUpperCase()) {
+    const nIndic =
+      indicator.substring(0, 1) + "x" + indicator.substring(1 + "x".length);
+    const signerAddr = ethers.utils.verifyMessage(nIndic, signature);
+    if (signerAddr.toUpperCase() != address) {
       res.sendStatus(400);
+      console.log("Error #4");
       return;
     }
   } catch {
     res.sendStatus(400);
+    console.log("Error #5");
     return;
   }
   try {
     await joinedCollection.insertOne({
-      _id: address.toUpperCase(),
-      whoIndicated: indicator.toUpperCase(),
+      _id: address,
+      whoIndicated: indicator,
     });
     if (await isAtIndicatorCollection(indicator)) {
       await indicatorsCollection.findOneAndUpdate(
-        { _id: indicator.toUpperCase() },
+        { _id: indicator },
         { $inc: { howManyIndicated: 1 } }
       );
       res.sendStatus(201);
       return;
     } else {
       await indicatorsCollection.insertOne({
-        _id: indicator.toUpperCase(),
+        _id: indicator,
         howManyIndicated: 1,
       });
       res.sendStatus(201);
@@ -84,6 +106,7 @@ app.post("/whitelist", async function (req, res) {
     }
   } catch {
     res.sendStatus(400);
+    console.log("Error #");
     return;
   }
 });
