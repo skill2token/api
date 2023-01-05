@@ -7,12 +7,18 @@ const cors = require("cors");
 import express from "express";
 const app = express();
 
+const { request } = require("undici");
+
 const { MongoClient } = require("mongodb");
 const MONGO_URI = process.env.MONGO_URI;
+const botToken = process.env.BOT_TOKEN;
 const client = new MongoClient(MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
+
+const port = 5500;
+const guildId = "997897262942400542";
 
 const database = client.db("whitelist");
 const indicatorsCollection = database.collection("indicators");
@@ -24,14 +30,13 @@ app.use(express.json());
 app.post("/whitelist", async function (req, res) {
   res.header("Access-Control-Allow-Origin", "*");
 
-  let { indicator, signature, address } = req.body;
-
+  let { indicator, signature, address, tokenType, accessToken } = req.body;
+  //#region ETH Verifications
   indicator = indicator.toUpperCase();
   address = address.toUpperCase();
 
   if (indicator == address) {
     res.sendStatus(400);
-    console.log("Error #");
     return;
   }
 
@@ -54,40 +59,66 @@ app.post("/whitelist", async function (req, res) {
 
   if (!is0xAddress(address) || (await isAtJoinedCollection(address))) {
     res.sendStatus(400);
-    console.log("Error #1");
     return;
   }
 
   if (!is0xAddress(indicator) || !(await isAtJoinedCollection(indicator))) {
     res.sendStatus(400);
-    console.log("Error #2");
     return;
   }
 
   if (typeof signature != typeof "s2t") {
     res.sendStatus(400);
-    console.log("Error #3");
     return;
   }
-
+  //#endregion
+  //#region Discord Verifications
   try {
+    const user = await request("https://discord.com/api/users/@me", {
+      method: "GET",
+      headers: {
+        authorization: `${tokenType} ${accessToken}`,
+      },
+    });
+    if (user.statusCode != 200) {
+      res.sendStatus(user.statusCode);
+      return;
+    }
+    const userBody = await user.body.json();
+    const dcId = userBody.id;
+    if (await joinedCollection.findOne({ discordId: dcId })) {
+      res.sendStatus(400);
+      return;
+    }
+    const guilds = await request(
+      `https://discord.com/api/guilds/${guildId}/members/${dcId}`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          access_token: accessToken,
+        }),
+      }
+    );
+    if (guilds.statusCode != 201 && guilds.statusCode != 204) {
+      res.sendStatus(guilds.statusCode);
+      return;
+    }
+    //#endregion
     const nIndic =
       indicator.substring(0, 1) + "x" + indicator.substring(1 + "x".length);
     const signerAddr = ethers.utils.verifyMessage(nIndic, signature);
     if (signerAddr.toUpperCase() != address) {
       res.sendStatus(400);
-      console.log("Error #4");
       return;
     }
-  } catch {
-    res.sendStatus(400);
-    console.log("Error #5");
-    return;
-  }
-  try {
     await joinedCollection.insertOne({
       _id: address,
       whoIndicated: indicator,
+      discordId: dcId,
     });
     if (await isAtIndicatorCollection(indicator)) {
       await indicatorsCollection.findOneAndUpdate(
@@ -104,12 +135,11 @@ app.post("/whitelist", async function (req, res) {
       res.sendStatus(201);
       return;
     }
-  } catch {
+  } catch (error) {
     res.sendStatus(400);
-    console.log("Error #");
     return;
   }
 });
 
-app.listen(5500);
+app.listen(port);
 console.log("The application is running! :)");

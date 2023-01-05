@@ -20,6 +20,7 @@
     "http": "0.0.1-security",
     "mongodb": "^4.8.0",
     "rimraf": "^3.0.2",
-    "typescript": "^4.7.4"
+    "typescript": "^4.7.4",
+    "undici": "^5.14.0"
   }
 }
