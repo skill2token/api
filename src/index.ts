@@ -19,7 +19,7 @@ const client = new MongoClient(MONGO_URI, {
 
 const port = 5500;
 const guildId = "997897262942400542";
-
+const roleId = "1060973992778936330";
 const database = client.db("whitelist");
 const indicatorsCollection = database.collection("indicators");
 const joinedCollection = database.collection("joined");
@@ -90,7 +90,7 @@ app.post("/whitelist", async function (req, res) {
       res.sendStatus(400);
       return;
     }
-    const guilds = await request(
+    const enterGuild = await request(
       `https://discord.com/api/guilds/${guildId}/members/${dcId}`,
       {
         method: "PUT",
@@ -103,8 +103,22 @@ app.post("/whitelist", async function (req, res) {
         }),
       }
     );
-    if (guilds.statusCode != 201 && guilds.statusCode != 204) {
-      res.sendStatus(guilds.statusCode);
+    if (enterGuild.statusCode != 201 && enterGuild.statusCode != 204) {
+      res.sendStatus(enterGuild.statusCode);
+      return;
+    }
+    const addRole = await request(
+      `https://discord.com/api/guilds/${guildId}/members/${dcId}/roles/${roleId}`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (addRole.statusCode != 204) {
+      res.sendStatus(addRole.statusCode);
       return;
     }
     //#endregion
