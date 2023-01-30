@@ -34,11 +34,16 @@ npm start
   - `indicator`, the person who indicated the one subscribing.
   - `signature`, is the signature of the indicator address by the person subscribing.
   - `address`, the address of the person subscribing.
+  - `tokenType` the type of the discord access token.
+  - `accessToken` the discord access token.
 - There are some rules to follow when using this API:
   - None of those variables can be `null` or `undefined`.
   - Signature has to be a valid signature with precisely the `indicator` address as the message.
   - All of the variables have to be `strings`.
   - `indicator` and `address` have to be valid `Ethereum` addresses.
+- There are as well some enviroment variables needed to run the application:
+  - `MONGO_URI` is the url for accessing the MongoDB database as an admin.
+  - `BOT_TOKEN` is the discord bot token used to invite users into the server and add roles to them.
   
 ### Style Practices
   
