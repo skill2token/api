@@ -1,3 +1,4 @@
+# ⚠️ This project has been abandoned
 # Skill2Token API
 
 [![Gmail](https://img.shields.io/badge/-Gmail-c14438?style=plastic&logo=Gmail&logoColor=white)](mailto:contact@skill2token.com)
